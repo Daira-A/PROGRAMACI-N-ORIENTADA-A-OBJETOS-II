@@ -1,0 +1,31 @@
+#include <iostream>
+using namespace std;
+class Cuenta{
+private:
+    double saldo;
+    int pin;
+public:
+    Cuenta(double s,int p){
+        saldo=s;
+        pin=p;
+    }
+    void retirar(double monto,int pinIngresado){
+        if(pinIngresado!=pin)
+            cout<<"PIN incorrecto. Operacion denegada.\n";
+        else if(monto>saldo)
+            cout<<"Saldo insuficiente.\n";
+        else{
+            saldo-=monto;
+            cout<<"Retiro exitoso. Saldo: "<<saldo<<endl;
+        }
+    }
+};
+int main(){
+    Cuenta c(500,1234);
+    c.retirar(100,0000);
+    c.retirar(100,1234);
+    c.retirar(900,1234);
+    c.saldo=1000000;
+    cout<<c.pin;
+    return 0;
+}
