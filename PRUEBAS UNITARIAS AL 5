@@ -1,0 +1,36 @@
+#include <iostream>
+#include <string>
+using namespace std;
+class EntradaCine {
+public:
+    string pelicula;
+    double precio;
+    int asientosDisponibles;
+};
+class CarritoDeCompra{
+public:
+    int cantidadEntradas;
+    double totalAPagar;
+    bool pagado;
+};
+void verificar(string nombre,bool resultado){
+    cout<<nombre<<": "<<(resultado?"PASA":"FALLA")<<endl;
+}
+int main(){
+    cout<<" PRUEBAS UNITARIAS EN LA PREGUNTA 5 "<<endl;
+    EntradaCine funcion;
+    funcion.asientosDisponibles=5;
+    funcion.asientosDisponibles=-8;
+    verificar("1. Asientos nunca negativos",funcion.asientosDisponibles>=0);
+    CarritoDeCompra carrito;
+    carrito.totalAPagar=40.0;
+    carrito.totalAPagar=carrito.totalAPagar-100.0;
+    verificar("2. Cupon invalido rechazado",carrito.totalAPagar>=0);
+    carrito.totalAPagar=40.0;
+    carrito.pagado=false;
+    double saldo=15.0;
+    carrito.totalAPagar=carrito.totalAPagar-saldo;
+    carrito.pagado=true;
+    verificar("3. Pago sin saldo rechazado",carrito.pagado==false);
+    return 0;
+}
