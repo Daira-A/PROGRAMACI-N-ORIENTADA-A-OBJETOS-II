@@ -1,0 +1,28 @@
+#include <iostream>
+using namespace std;
+class Pago{
+public:
+    virtual void pagar(double monto)=0;
+    virtual ~Pago(){}
+};
+class Tarjeta:public Pago{
+public:
+    void pagar(double monto){
+        cout<<"Pagando "<<monto<<" con tarjeta\n";
+    }
+};
+class Yape:public Pago{
+public:
+    void pagar(double monto){
+        cout<<"Pagando "<<monto<<" con Yape\n";
+    }
+};
+void comprar(Pago&metodo){
+    metodo.pagar(100);
+}
+int main() {
+    Tarjeta t;
+    Yape y;
+    comprar(t);
+    comprar(y);
+}
