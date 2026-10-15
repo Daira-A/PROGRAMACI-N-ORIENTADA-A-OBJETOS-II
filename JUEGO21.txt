@@ -1,0 +1,333 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+using namespace std;
+const int MAX_JUGADORES=20;
+const int VALOR_MINIMO=15;
+const int VALOR_MAXIMO=50;
+class Configuracion{
+private:
+    int numJugadores;
+    string palos[4];
+    int valorGanar;
+    bool valida(int n,int v){
+        return n>=1&&n<=MAX_JUGADORES&&v>=VALOR_MINIMO&&v<=VALOR_MAXIMO;
+    }
+public:
+    Configuracion(){
+        numJugadores=2;
+        valorGanar=21;
+        palos[0]="Corazones";
+        palos[1]="Diamantes";
+        palos[2]="Treboles";
+        palos[3]="Espadas";
+    }
+    int getNumJugadores(){return numJugadores;}
+    int getValorGanar(){return valorGanar;}
+    bool leer(ifstream &f){
+        int n,v;
+        string p[4];
+        f>>n;
+        for(int i=0;i<4;i++)f>>p[i];
+        f>>v;
+        if(!f||!valida(n,v))return false;
+        numJugadores=n;
+        valorGanar=v;
+        for(int i=0;i<4;i++)palos[i]=p[i];
+        return true;
+    }
+    void escribir(ofstream &f){
+        f<<numJugadores<<endl;
+        for(int i=0;i<4;i++)f<<palos[i]<<" ";
+        f<<endl;
+        f<<valorGanar<<endl;
+    }
+    // Devuelve 0 si se leyo bien, 1 si no existe el archivo, 2 si los datos no son validos
+    int cargarArchivo(){
+        ifstream f("setup.txt");
+        if(!f)return 1;
+        if(!leer(f))return 2;
+        return 0;
+    }
+    void guardarArchivo(){
+        ofstream f("setup.txt");
+        escribir(f);
+        cout<<"Configuracion guardada en setup.txt"<<endl;
+    }
+    void mostrar(){
+        cout<<endl<<"--- Configuracion actual ---"<<endl;
+        cout<<"Jugadores: "<<numJugadores<<endl;
+        cout<<"Palos: ";
+        for(int i=0;i<4;i++)cout<<palos[i]<<" ";
+        cout<<endl;
+        cout<<"Se gana con: "<<valorGanar<<endl;
+    }
+    void menu(){
+        int op;
+        do{
+            mostrar();
+            cout<<endl;
+            cout<<"1. Cambiar numero de jugadores (1 a "<<MAX_JUGADORES<<")"<<endl;
+            cout<<"2. Cambiar nombres de los palos"<<endl;
+            cout<<"3. Elegir valor para ganar ("<<VALOR_MINIMO<<" a "<<VALOR_MAXIMO<<")"<<endl;
+            cout<<"4. Guardar y volver"<<endl;
+            cout<<"Opcion: ";
+            cin>>op;
+            if(!cin){
+                cin.clear();
+                cin.ignore(1000,'\n');
+                op=0;
+            }
+            if(op==1){
+                int n;
+                cout<<"Numero de jugadores: ";
+                cin>>n;
+                if(cin&&n>=1&&n<=MAX_JUGADORES)numJugadores=n;
+                else{
+                    cin.clear();
+                    cin.ignore(1000,'\n');
+                    cout<<"Valor no valido"<<endl;
+                }
+            }else if(op==2){
+                cout<<"Escribe 4 nombres (una palabra cada uno): ";
+                for(int i=0;i<4;i++)cin>>palos[i];
+            }else if(op==3){
+                int v;
+                cout<<"Valor para ganar ("<<VALOR_MINIMO<<" a "<<VALOR_MAXIMO<<"): ";
+                cin>>v;
+                if(cin&&v>=VALOR_MINIMO&&v<=VALOR_MAXIMO)valorGanar=v;
+                else{
+                    cin.clear();
+                    cin.ignore(1000,'\n');
+                    cout<<"Valor no valido"<<endl;
+                }
+            }
+        }while(op!=4);
+        guardarArchivo();
+    }
+    string nombreCarta(int c){
+        int valor=c%13+1;
+        int palo=c/13;
+        string v;
+        if(valor==1) v="A";
+        else if(valor==11) v="J";
+        else if(valor==12) v="Q";
+        else if(valor==13) v="K";
+        else v=to_string(valor);
+        return v+" de "+palos[palo];
+    }
+};
+class Mazo{
+private:
+    int cartas[52];
+    int restantes;
+public:
+    Mazo(){
+        for(int i=0;i<52;i++)cartas[i]=i;
+        restantes=52;
+        for(int i=51;i>0;i--){
+            int j=rand()%(i+1);
+            int t=cartas[i];
+            cartas[i]=cartas[j];
+            cartas[j]=t;
+        }
+    }
+    int getRestantes(){return restantes;}
+    int sacar(){
+        restantes--;
+        return cartas[restantes];
+    }
+    void guardar(ofstream &f){
+        f<<restantes<<endl;
+        for(int i=0;i<restantes;i++)f<<cartas[i]<<" ";
+        f<<endl;
+    }
+    bool cargar(ifstream &f){
+        f>>restantes;
+        if(!f||restantes<0||restantes>52)return false;
+        for(int i=0;i<restantes;i++){
+            f>>cartas[i];
+            if(!f||cartas[i]<0||cartas[i]>51)return false;
+        }
+        return true;
+    }
+};
+class Mano{
+private:
+    int total;
+    int ases;
+public:
+    Mano(){
+        total=0;
+        ases=0;
+    }
+    void agregar(int c){
+        int valor=c%13+1;
+        if(valor==1)ases++;
+        if(valor>10)total+=10;
+        else total+=valor;
+    }
+    int getTotal(int limite){
+        if(ases>0&&total+10<=limite)return total+10;
+        return total;
+    }
+    void guardar(ofstream &f){
+        f<<total<<" "<<ases<<endl;
+    }
+    bool cargar(ifstream &f){
+        f>>total>>ases;
+        return f&&total>=0&&ases>=0&&ases<=4;
+    }
+};
+class Juego{
+private:
+    Configuracion config;
+    Mazo mazo;
+    Mano jugadores[MAX_JUGADORES];
+    int turno;
+    void darAJugador(int i){
+        int c=mazo.sacar();
+        jugadores[i].agregar(c);
+        cout<<"Jugador "<<i+1<<" recibe: "<<config.nombreCarta(c)<<endl;
+    }
+    bool jugarJugador(int i){
+        char op;
+        int limite=config.getValorGanar();
+        cout<<endl<<"--- Turno del Jugador "<<i+1<<" ---"<<endl;
+        while(jugadores[i].getTotal(limite)<limite&&mazo.getRestantes()>0){
+            cout<<"Tu total: "<<jugadores[i].getTotal(limite)<<endl;
+            cout<<"(p)pedir, (q)quedarse ahi, (g)guardar y salir: ";
+            cin>>op;
+            if(op=='g'){
+                guardar();
+                return true;
+            }
+            if(op!='p')break;
+            darAJugador(i);
+        }
+        int t=jugadores[i].getTotal(limite);
+        cout<<"Jugador "<<i+1<<" termina con "<<t;
+        if(t>limite)cout<<" (se paso)";
+        cout<<endl;
+        return false;
+    }
+public:
+    Juego(Configuracion c){
+        config=c;
+        turno=0;
+    }
+    void nuevo(){
+        turno=0;
+        for(int i=0;i<config.getNumJugadores();i++){
+            darAJugador(i);
+            darAJugador(i);
+        }
+    }
+    void guardar(){
+        ofstream f("juego21.txt");
+        config.escribir(f);
+        f<<turno<<endl;
+        mazo.guardar(f);
+        for(int i=0;i<config.getNumJugadores();i++)jugadores[i].guardar(f);
+        cout<<"Juego guardado"<<endl;
+    }
+    bool cargar(){
+        ifstream f("juego21.txt");
+        if(!f)return false;
+        if(!config.leer(f))return false;
+        f>>turno;
+        if(!f||turno<0||turno>=config.getNumJugadores())return false;
+        if(!mazo.cargar(f))return false;
+        for(int i=0;i<config.getNumJugadores();i++){
+            if(!jugadores[i].cargar(f))return false;
+        }
+        return true;
+    }
+    void jugar(){
+        int n=config.getNumJugadores();
+        for(int i=turno;i<n;i++){
+            turno=i;
+            if(jugarJugador(i))return;
+        }
+        resultado();
+    }
+    void resultado(){
+        int n=config.getNumJugadores();
+        int limite=config.getValorGanar();
+        int mejor=0;
+        cout<<endl<<"RESULTADOS"<<endl;
+        cout<<"Valor para ganar: "<<limite<<endl;
+        for(int i=0;i<n;i++){
+            int t=jugadores[i].getTotal(limite);
+            cout<<"Jugador "<<i+1<<": "<<t;
+            if(t>limite)cout<<" (se paso)";
+            cout<<endl;
+            if(t<=limite&&t>mejor)mejor=t;
+        }
+        if(mejor==0){
+            cout<<"Todos se pasaron. Nadie gana"<<endl;
+            return;
+        }
+        int cuantos=0;
+        for(int i=0;i<n;i++){
+            if(jugadores[i].getTotal(limite)==mejor)cuantos++;
+        }
+        if(cuantos==1){
+            for(int i=0;i<n;i++){
+                if(jugadores[i].getTotal(limite)==mejor)
+                    cout<<"Gana el Jugador "<<i+1<<" con "<<mejor<<endl;
+            }
+        }else{
+            cout<<"Empate con "<<mejor<<" entre los jugadores:";
+            for(int i=0;i<n;i++){
+                if(jugadores[i].getTotal(limite)==mejor)cout<<" "<<i+1;
+            }
+            cout<<endl;
+        }
+    }
+};
+int main(){
+    srand(time(0));
+    Configuracion config;
+    int estado=config.cargarArchivo();
+    if(estado==0){
+        cout<<"setup.txt cargado correctamente"<<endl;
+        config.mostrar();
+    }else if(estado==1){
+        cout<<"No se encontro setup.txt, se usan valores por defecto"<<endl;
+    }else{
+        cout<<"setup.txt tiene datos no validos (jugadores 1 a "<<MAX_JUGADORES<<", valor "<<VALOR_MINIMO<<" a "<<VALOR_MAXIMO<<"), se usan valores por defecto"<<endl;
+    }
+    int op;
+    do{
+        cout<<endl<<"JUEGO 21"<<endl;
+        cout<<"1. Jugar"<<endl;
+        cout<<"2. Configuracion"<<endl;
+        cout<<"3. Salir"<<endl;
+        cout<<"Opcion: ";
+        cin>>op;
+        if(!cin){
+            cin.clear();
+            cin.ignore(1000,'\n');
+            op=0;
+        }
+        if(op==1){
+            Juego partida(config);
+            char r;
+            cout<<"Cargar juego guardado?(s/n): ";
+            cin>>r;
+            if(r=='s'&&partida.cargar()){
+                cout<<"Juego cargado"<<endl;
+            }else{
+                if(r=='s')cout<<"No se pudo cargar... Nueva partida"<<endl;
+                partida.nuevo();
+            }
+            partida.jugar();
+        }else if(op==2){
+            config.menu();
+        }
+    }while(op!=3);
+    return 0;
+}
